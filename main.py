@@ -1,10 +1,47 @@
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+from sqlalchemy import select
 import string
+
+Base = declarative_base()
+
+
+class Registration(Base):
+    __tablename__ = 'registration'
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String(50), unique=True)
+    psw = Column(String(500), nullable=True)
+
+
+    def __repr__(self):
+        return '<Registration %r>' % self.id
+
 
 bot = Bot('6646799075:AAEnWRsy-xNajNzdMYpwAx7PJoupa52V2f8')
 dp = Dispatcher(bot)
+
+
+# создаем подключение к нашей БД
+engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
+
+# создаем сессию (открытие сессии)
+Session = sessionmaker(bind=engine)
+session = Session()
+
+users = session.query(Registration).all()
+
+for user in users:
+    print(user.id)
+
+session.close()
+
+
 
 
 HELP_COMMAND = """
@@ -41,6 +78,7 @@ async def help_command(message: types.Message):
                            text = "Whats up",
                            parse_mode='HTML',
                            reply_markup=kb)
+
 
 
 @dp.message_handler(commands=['photo'])
