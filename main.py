@@ -27,19 +27,21 @@ bot = Bot('6646799075:AAEnWRsy-xNajNzdMYpwAx7PJoupa52V2f8')
 dp = Dispatcher(bot)
 
 
-# создаем подключение к нашей БД
-engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
+async def get_user_data(message: types.Message):
+    # создаем подключение к нашей БД
+    engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
 
-# создаем сессию (открытие сессии)
-Session = sessionmaker(bind=engine)
-session = Session()
+    # создаем сессию (открытие сессии)
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
-users = session.query(Registration).all()
+    users = session.query(Registration).all()
 
-for user in users:
-    print(user.id)
+    for user in users:
+        await message.answer(f'{user.id},{user.email}')
 
-session.close()
+    sessionession.close()
+    engine.dispose()  # NOTE: close required before dispose!
 
 
 
@@ -70,6 +72,11 @@ async def help_command(message: types.Message):
     await bot.send_message(chat_id=message.from_id,
                            text = HELP_COMMAND,
                            parse_mode='HTML')
+
+
+@dp.message_handler(commands=['data'])
+async def some_data(message: types.Message):
+    await get_user_data(message)
 
 
 @dp.message_handler(commands=['start'])
