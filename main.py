@@ -18,9 +18,14 @@ kb = ReplyKeyboardMarkup(resize_keyboard=True,
                          ) #аргументы
 b1 = KeyboardButton('/help')
 b2 = KeyboardButton('/start')
-b3 = KeyboardButton('/photo')
+b4 = KeyboardButton('Добавление дохода')
+b5 = KeyboardButton('Добавление расхода')
+b6 = KeyboardButton('Статистика дохода')
+b7 = KeyboardButton('Статистика расхода')
 
-kb.add(b1).add(b2).insert(b3)
+b3 = KeyboardButton('Добавление чека')
+
+kb.add(b1).add(b2).add(b4).add(b5).add(b6).add(b7).insert(b3)
 
 
 @dp.message_handler(commands=['help'])
