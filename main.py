@@ -28,6 +28,21 @@ class Registration(Base):
         return '<Registration %r>' % self.id
 
 
+class Income(Base):
+
+    __tablename__ = 'income'
+
+    id = Column(Integer, primary_key=True)
+    index_sal = Column(Integer, primary_key=False, default=0)
+    sum_sal = Column(Integer, primary_key=False, default=0)
+    name_sal = Column(String(100), default='Не указано описание')
+    user_id = Column(Integer)
+    date = Column(default=datetime.now)
+
+    def __repr__(self):
+        return '<Income %r>' % self.id
+
+
 bot = Bot('6646799075:AAEnWRsy-xNajNzdMYpwAx7PJoupa52V2f8')
 dp = Dispatcher(bot, storage=MemoryStorage())
 
@@ -39,7 +54,7 @@ class ProfileStatesGroup(StatesGroup):
 
 class RegisteredUser(StatesGroup):
     user_registered = State()
-
+    more_about_incomes = State()
 
 
 kb = ReplyKeyboardMarkup(resize_keyboard=True,
@@ -48,6 +63,10 @@ kb = ReplyKeyboardMarkup(resize_keyboard=True,
 
 kb1 = ReplyKeyboardMarkup(resize_keyboard=True,
                           ) #аргументы
+
+kb2 = ReplyKeyboardMarkup(resize_keyboard=True,
+                          one_time_keyboard=True
+                         ) #аргументы
 
 b1 = KeyboardButton('/help')
 b2 = KeyboardButton('/start')
@@ -58,11 +77,14 @@ b6 = KeyboardButton('Статистика доходов')
 b7 = KeyboardButton('Статистика расходов')
 b8 = KeyboardButton('Вход в сервис')
 b9 = KeyboardButton('Регистрация')
+b10 = KeyboardButton('Статистика по времени')
+b11 = KeyboardButton('Подробная статистика')
 
 
 
 kb.add(b8).insert(b9)
 kb1.add(b3).add(b4).insert(b5).add(b6).insert(b7).add(b1)
+kb2.add(b10).add(b11)
 
 
 async def get_user_data(message: types.Message):
@@ -83,7 +105,7 @@ async def get_user_data(message: types.Message):
 
 
 async def check_profile(message: types.Message, login, password):
-    print(login, password)
+
     # создаем подключение к нашей БД
     engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
 
@@ -91,28 +113,106 @@ async def check_profile(message: types.Message, login, password):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    users = session.query(Registration).all()
+    user = session.query(Registration).filter(Registration.email == login).first()
 
-    for user in users:
-        if user.email != login:
-            await message.answer('Такой пользователь в системе не зарегистрирован!')
-            break
+    if user == None:
+        await message.answer('Такой пользователь в системе не зарегистрирован!')
+    else:
+        db_password = user.psw
+        if check_password_hash(db_password, password):
+            await bot.send_message(chat_id=message.from_id,
+                                   text='Вы успешно вошли в свой аккаунт',
+                                   parse_mode='HTML',
+                                   reply_markup=kb1
+                                   )
+            await RegisteredUser.user_registered.set()
+
         else:
-            db_password = user.psw
-            if check_password_hash(db_password, password):
-                await bot.send_message(chat_id=message.from_id,
-                                       text='Вы успешно вошли в свой аккаунт',
-                                       parse_mode='HTML',
-                                       reply_markup=kb1
-                                       )
-
-                break
-            else:
-                await message.answer('Пароль подвел!')
-                break
+            await message.answer('Пароль подвел!')
 
     session.close()
     engine.dispose()  # NOTE: close required before dispose
+
+
+async def get_incomes(message: types.Message, login):
+
+    # создаем подключение к нашей БД
+    engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
+
+    # создаем сессию (открытие сессии)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    user_id = session.query(Registration).filter(Registration.email == login).first()
+
+    income = session.query(Income).filter(Income.user_id == '2').order_by(Income.date.desc()).all()
+
+    sum_income = 0
+    sum_incomes_for_today = 0
+    sum_incomes_for_week = 0
+    sum_incomes_for_month = 0
+    to_day = datetime.today().date()
+
+    for e in income:
+
+        print(e.sum_sal)
+
+        sum_income += e.sum_sal
+        for_date = e.date.date()
+        # разница в днях между сегодня и датой из бд
+        a = to_day - for_date
+        a = a.days
+        if a < 1:
+            sum_incomes_for_today += e.sum_sal
+        elif a < 7:
+            sum_incomes_for_week += e.sum_sal
+        elif a < 30:
+            sum_incomes_for_month += e.sum_sal
+
+    sum_incomes_for_week += sum_incomes_for_today
+    sum_incomes_for_month += sum_incomes_for_week
+
+    await bot.send_message(chat_id=message.from_id,
+                           text=f'Доход за cегодня= {sum_incomes_for_week} \n'
+                                f'Доход за неделю = {sum_incomes_for_week} \n'
+                                f'Доход за неделю = {sum_incomes_for_week} \n'
+                                f'Доход за неделю = {sum_incomes_for_week} \n',
+
+                           parse_mode='HTML'
+                           )
+
+
+    session.close()
+    engine.dispose()  # NOTE: close required before dispose
+
+async def get_more_in_incomes(message: types.Message, login):
+
+    # создаем подключение к нашей БД
+    engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
+
+    # создаем сессию (открытие сессии)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    user_id = session.query(Registration).filter(Registration.email == login).first()
+
+    income = session.query(Income).filter(Income.user_id == '2').order_by(Income.date.desc()).all()
+
+    for e in income:
+        await bot.send_message(chat_id=message.from_id,
+                               text=f'Категория / Индекс: {e.index_sal} \n'
+                                    f'Цена: {e.sum_sal} \n'
+                                    f'Название: {e.name_sal} \n'
+                                    f'Дата: {e.date.date()} \n',
+
+                               parse_mode='HTML'
+                               )
+
+
+    session.close()
+    engine.dispose()  # NOTE: close required before dispose
+
+
 
 
 
@@ -170,8 +270,47 @@ async def load_password(message: types.Message, state: FSMContext):
         data['password'] = message.text
 
     await message.reply("Принял данные!")
+    # await state.finish()
     await check_profile(message, data['login'], data['password'])
-    await state.finish()
+
+
+
+
+# Обработка клавиатуры, которая появляется после регистрации
+@dp.message_handler(content_types=['text'], state=RegisteredUser.user_registered)
+async def user_incomes(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        if message.text == 'Статистика доходов':
+            print(data)
+            await bot.send_message(chat_id=message.from_id,
+                                   text = "тут доходы",
+                                   parse_mode='HTML',
+                                   reply_markup=kb2)
+            await get_incomes(message, data['login'])
+            await RegisteredUser.more_about_incomes.set()
+
+
+@dp.message_handler(content_types=['text'], state=RegisteredUser.more_about_incomes)
+async def user_incomes(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        if message.text == 'Подробная статистика':
+            print(data)
+            await bot.send_message(chat_id=message.from_id,
+                                   text = "тут  по больше",
+                                   parse_mode='HTML',
+                                   reply_markup=kb2)
+            await get_more_in_incomes(message, data['login'])
+            await state.finish()
+
+
+
+@dp.message_handler()
+async def log_in_command(message: types.Message):
+    if message.text == 'Вход в сервис':
+        await bot.send_message(chat_id=message.from_id,
+                               text = "Введите логин:",
+                               parse_mode='HTML')
+        await ProfileStatesGroup.user_name.set()
 
 
 if __name__ == '__main__':
