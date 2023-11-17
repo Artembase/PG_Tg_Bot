@@ -35,7 +35,7 @@ class Income(Base):
     sum_sal = Column(Integer, primary_key=False, default=0)
     name_sal = Column(String(100), default='Не указано описание')
     user_id = Column(Integer)
-    date = Column(default=datetime.now)
+    date = Column(default=datetime.today())
 
     def __repr__(self):
         return '<Income %r>' % self.id
@@ -50,7 +50,7 @@ class Article(Base):
     quantity = Column(Integer, default=1)
     cost = Column(Integer, nullable=False)
     user_id = Column(Integer)
-    date = Column(default=datetime.now)
+    date = Column(default=datetime.today())
 
     def __repr__(self):
         return '<Article %r>' % self.id
@@ -63,6 +63,13 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 class ProfileStatesGroup(StatesGroup):
     user_name = State()
     user_password = State()
+
+
+class AddIncomes(StatesGroup):
+    get_income_index = State()
+    get_income_sum = State()
+    get_income_name = State()
+    get_id_name = State()
 
 
 class RegisteredUser(StatesGroup):
@@ -123,6 +130,43 @@ async def get_user_data(message: types.Message):
 
     session.close()
     engine.dispose()  # NOTE: close required before dispose!
+
+
+async def get_user_id(login):
+    # создаем подключение к нашей БД
+    engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
+
+    # создаем сессию (открытие сессии)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    user = session.query(Registration).filter(Registration.email == login).first()
+
+
+
+    session.close()
+    engine.dispose()  # NOTE: close required before dispose
+    return user.id
+
+
+async def puss_income_to_db(index,sum,name,user_id):
+    # создаем подключение к нашей БД
+    engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
+
+    # создаем сессию (открытие сессии)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    income = session.query(Income).filter(Income.user_id == user_id).first()
+
+    new = Income(index_sal=index, sum_sal=sum, name_sal=name, user_id=user_id)
+
+    session.add(new)
+
+    session.commit()
+
+    session.close()
+    engine.dispose()  # NOTE: close required before dispose
 
 
 async def check_profile(message: types.Message, login, password):
@@ -389,6 +433,45 @@ async def user_incomes(message: types.Message, state: FSMContext):
                                    reply_markup=kb3)
             await get_more_in_articles(message, data['login'])
 
+        if message.text == 'Добавление доходов':
+            await bot.send_message(chat_id=message.from_id,
+                                   text="Добавляй зп \n"
+                                        "Введи Категорию/индекс",
+                                   parse_mode='HTML')
+            await AddIncomes.get_income_index.set()
+
+            @dp.message_handler(content_types=['text'], state=AddIncomes.get_income_index)
+            async def get_index_income(message: types.Message, state: FSMContext):
+                print('1')
+                async with state.proxy() as data:
+                    data['index'] = message.text
+
+                await message.reply("Теперь сумму:")
+                await AddIncomes.next()
+
+            @dp.message_handler(content_types=['text'], state=AddIncomes.get_income_sum)
+            async def get_sum_income(message: types.Message, state: FSMContext):
+                print('2')
+                async with state.proxy() as data:
+                    data['sum'] = message.text
+
+                await message.reply("Теперь название:")
+                await AddIncomes.next()
+
+            @dp.message_handler(content_types=['text'], state=AddIncomes.get_income_name)
+            async def get_name_income(message: types.Message, state: FSMContext):
+                print('3')
+                async with state.proxy() as data:
+                    data['name'] = message.text
+                    data['id'] = await get_user_id(data['login'])
+
+                print(data)
+                await puss_income_to_db(data['index'], data['sum'], data['name'], data['id'])
+
+                await state.finish()
+
+
+
 #
 # if message.text == 'Статистика доходов':
 #     await bot.send_message(chat_id=message.from_id,
@@ -403,7 +486,6 @@ async def user_incomes(message: types.Message, state: FSMContext):
 #                            parse_mode='HTML',
 #                            reply_markup=kb3)
 #     await get_more_in_incomes(message, data['login'])
-
 
 @dp.message_handler(content_types=['text'], state=ProfileStatesGroup.user_name)
 async def load_login(message: types.Message, state: FSMContext):
