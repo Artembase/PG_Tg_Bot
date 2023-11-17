@@ -79,12 +79,14 @@ b8 = KeyboardButton('Вход в сервис')
 b9 = KeyboardButton('Регистрация')
 b10 = KeyboardButton('Статистика по времени')
 b11 = KeyboardButton('Подробная статистика')
+b12 = KeyboardButton('Назад')
+b13 = KeyboardButton('К меню')
 
 
 
 kb.add(b8).insert(b9)
 kb1.add(b3).add(b4).insert(b5).add(b6).insert(b7).add(b1)
-kb2.add(b10).add(b11)
+kb2.add(b10).add(b11).add(b12).insert(b13)
 
 
 async def get_user_data(message: types.Message):
@@ -118,7 +120,8 @@ async def check_profile(message: types.Message, login, password):
     user = session.query(Registration).filter(Registration.email == login).first()
 
     if user == None:
-        await message.answer('Такой пользователь в системе не зарегистрирован!')
+        await message.answer('Такой пользователь в системе не зарегистрирован! '
+                             'Попробуйте снова /start или зарегистрируйтесь на site.ru')
 
     else:
         db_password = user.psw
@@ -131,7 +134,8 @@ async def check_profile(message: types.Message, login, password):
             await RegisteredUser.user_registered.set()
 
         else:
-            await message.answer('Пароль подвел!')
+            await message.answer('Пароль подвел! '
+                                 'Попробуйте снова /start')
 
     session.close()
     engine.dispose()  # NOTE: close required before dispose
@@ -148,7 +152,7 @@ async def get_incomes(message: types.Message, login):
 
     user_id = session.query(Registration).filter(Registration.email == login).first()
 
-    income = session.query(Income).filter(Income.user_id == '2').order_by(Income.date.desc()).all()
+    income = session.query(Income).filter(Income.user_id == user_id.id).order_by(Income.date.desc()).all()
 
     sum_income = 0
     sum_incomes_for_today = 0
@@ -199,7 +203,7 @@ async def get_more_in_incomes(message: types.Message, login):
 
     user_id = session.query(Registration).filter(Registration.email == login).first()
 
-    income = session.query(Income).filter(Income.user_id == '2').order_by(Income.date.desc()).all()
+    income = session.query(Income).filter(Income.user_id == user_id.id).order_by(Income.date.desc()).all()
 
     for e in income:
         await bot.send_message(chat_id=message.from_id,
@@ -240,7 +244,7 @@ async def help_command(message: types.Message):
 async def some_data(message: types.Message):
     await get_user_data(message)
 
-@dp.message_handler(commands=['start'])
+@dp.message_handler(commands=['start'], state='*')
 async def help_command(message: types.Message):
     await bot.send_message(chat_id=message.from_id,
                            text = "Добро пожаловать, для начала взаимодествия войдите в аккаунт или зарегистрируйтесьб на сайте site.ru",
@@ -266,6 +270,7 @@ async def load_login(message: types.Message, state: FSMContext):
     await ProfileStatesGroup.next()
 
 
+
 @dp.message_handler(content_types=['text'], state=ProfileStatesGroup.user_password)
 async def load_password(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
@@ -281,13 +286,13 @@ async def load_password(message: types.Message, state: FSMContext):
 async def user_incomes(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text == 'Статистика доходов':
-            print(data)
             await bot.send_message(chat_id=message.from_id,
                                    text = "тут доходы",
                                    parse_mode='HTML',
                                    reply_markup=kb2)
             await get_incomes(message, data['login'])
             await RegisteredUser.more_about_incomes.set()
+
 
 
 @dp.message_handler(content_types=['text'], state=RegisteredUser.more_about_incomes)
