@@ -106,6 +106,8 @@ async def get_user_data(message: types.Message):
 
 async def check_profile(message: types.Message, login, password):
 
+
+
     # создаем подключение к нашей БД
     engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
 
@@ -117,6 +119,7 @@ async def check_profile(message: types.Message, login, password):
 
     if user == None:
         await message.answer('Такой пользователь в системе не зарегистрирован!')
+
     else:
         db_password = user.psw
         if check_password_hash(db_password, password):
@@ -237,7 +240,6 @@ async def help_command(message: types.Message):
 async def some_data(message: types.Message):
     await get_user_data(message)
 
-
 @dp.message_handler(commands=['start'])
 async def help_command(message: types.Message):
     await bot.send_message(chat_id=message.from_id,
@@ -270,10 +272,8 @@ async def load_password(message: types.Message, state: FSMContext):
         data['password'] = message.text
 
     await message.reply("Принял данные!")
-    # await state.finish()
+    await state.reset_state(with_data=False)
     await check_profile(message, data['login'], data['password'])
-
-
 
 
 # Обработка клавиатуры, которая появляется после регистрации
