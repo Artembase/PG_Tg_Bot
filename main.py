@@ -67,6 +67,9 @@ kb1 = ReplyKeyboardMarkup(resize_keyboard=True,
 kb2 = ReplyKeyboardMarkup(resize_keyboard=True,
                           one_time_keyboard=True
                          ) #аргументы
+kb3 = ReplyKeyboardMarkup(resize_keyboard=True,
+                          one_time_keyboard=True
+                         ) #аргументы
 
 b1 = KeyboardButton('/help')
 b2 = KeyboardButton('/start')
@@ -80,13 +83,14 @@ b9 = KeyboardButton('Регистрация')
 b10 = KeyboardButton('Статистика по времени')
 b11 = KeyboardButton('Подробная статистика')
 b12 = KeyboardButton('Назад')
-b13 = KeyboardButton('К меню')
+b13 = KeyboardButton('Главное меню')
 
 
 
 kb.add(b8).insert(b9)
 kb1.add(b3).add(b4).insert(b5).add(b6).insert(b7).add(b1)
 kb2.add(b10).add(b11).add(b12).insert(b13)
+kb3.add(b13)
 
 
 async def get_user_data(message: types.Message):
@@ -261,6 +265,30 @@ async def log_in_command(message: types.Message):
         await ProfileStatesGroup.user_name.set()
 
 
+@dp.message_handler(content_types='text', state=RegisteredUser.user_registered)
+async def user_incomes(message: types.Message,state: FSMContext):
+    async with state.proxy() as data:
+        if message.text == 'Главное меню':
+            await bot.send_message(chat_id=message.from_id,
+                                   text = "типо меню",
+                                   parse_mode='HTML',
+                                   reply_markup=kb1)
+
+        if message.text == 'Статистика доходов':
+            await bot.send_message(chat_id=message.from_id,
+                                   text = "тут доходы",
+                                   parse_mode='HTML',
+                                   reply_markup=kb2)
+            await get_incomes(message, data['login'])
+
+        if message.text == 'Подробная статистика':
+            await bot.send_message(chat_id=message.from_id,
+                                   text = "тут  по больше",
+                                   parse_mode='HTML',
+                                   reply_markup=kb3)
+            await get_more_in_incomes(message, data['login'])
+
+
 @dp.message_handler(content_types=['text'], state=ProfileStatesGroup.user_name)
 async def load_login(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
@@ -282,40 +310,33 @@ async def load_password(message: types.Message, state: FSMContext):
 
 
 # Обработка клавиатуры, которая появляется после регистрации
-@dp.message_handler(content_types=['text'], state=RegisteredUser.user_registered)
-async def user_incomes(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        if message.text == 'Статистика доходов':
-            await bot.send_message(chat_id=message.from_id,
-                                   text = "тут доходы",
-                                   parse_mode='HTML',
-                                   reply_markup=kb2)
-            await get_incomes(message, data['login'])
-            await RegisteredUser.more_about_incomes.set()
+# @dp.message_handler(content_types=['text'], state=RegisteredUser.user_registered)
+# async def user_incomes(message: types.Message, state: FSMContext):
+#     async with state.proxy() as data:
+#         if message.text == 'Статистика доходов':
+#             await bot.send_message(chat_id=message.from_id,
+#                                    text = "тут доходы",
+#                                    parse_mode='HTML',
+#                                    reply_markup=kb2)
+#             await get_incomes(message, data['login'])
+#             await RegisteredUser.more_about_incomes.set()
+
+
+# @dp.message_handler(content_types=['text'], state=RegisteredUser.more_about_incomes)
+# async def user_incomes(message: types.Message, state: FSMContext):
+#     async with state.proxy() as data:
+#         if message.text == 'Подробная статистика':
+#             print(data)
+#             await bot.send_message(chat_id=message.from_id,
+#                                    text = "тут  по больше",
+#                                    parse_mode='HTML',
+#                                    reply_markup=kb3)
+#             await get_more_in_incomes(message, data['login'])
+#             await state.set_state(RegisteredUser.user_registered)
 
 
 
-@dp.message_handler(content_types=['text'], state=RegisteredUser.more_about_incomes)
-async def user_incomes(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        if message.text == 'Подробная статистика':
-            print(data)
-            await bot.send_message(chat_id=message.from_id,
-                                   text = "тут  по больше",
-                                   parse_mode='HTML',
-                                   reply_markup=kb2)
-            await get_more_in_incomes(message, data['login'])
-            await state.finish()
 
-
-
-@dp.message_handler()
-async def log_in_command(message: types.Message):
-    if message.text == 'Вход в сервис':
-        await bot.send_message(chat_id=message.from_id,
-                               text = "Введите логин:",
-                               parse_mode='HTML')
-        await ProfileStatesGroup.user_name.set()
 
 
 if __name__ == '__main__':
