@@ -54,7 +54,6 @@ class ProfileStatesGroup(StatesGroup):
 
 class RegisteredUser(StatesGroup):
     user_registered = State()
-    more_about_incomes = State()
 
 
 kb = ReplyKeyboardMarkup(resize_keyboard=True,
@@ -89,7 +88,7 @@ b13 = KeyboardButton('Главное меню')
 
 kb.add(b8).insert(b9)
 kb1.add(b3).add(b4).insert(b5).add(b6).insert(b7).add(b1)
-kb2.add(b10).add(b11).add(b12).insert(b13)
+kb2.add(b11).add(b13)
 kb3.add(b13)
 
 
@@ -296,7 +295,6 @@ async def load_login(message: types.Message, state: FSMContext):
 
     await message.reply("Теперь пароль:")
     await ProfileStatesGroup.next()
-
 
 
 @dp.message_handler(content_types=['text'], state=ProfileStatesGroup.user_password)
