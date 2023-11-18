@@ -9,6 +9,7 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import re
 from sqlalchemy import select
 import string
 
@@ -72,6 +73,13 @@ class AddIncomes(StatesGroup):
     get_id_name = State()
 
 
+class AddOutcomes(StatesGroup):
+    get_Outcomes_name = State()
+    get_Outcomes_index = State()
+    get_Outcomes_quantity = State()
+    get_Outcomes_cost = State()
+    get_id_name = State()
+
 class RegisteredUser(StatesGroup):
     user_registered = State()
 
@@ -98,7 +106,7 @@ b1 = KeyboardButton('/help')
 b2 = KeyboardButton('/start')
 b3 = KeyboardButton('Добавление чека')
 b4 = KeyboardButton('Добавление доходов')
-b5 = KeyboardButton('Добавление расхоов')
+b5 = KeyboardButton('Добавление расходов')
 b6 = KeyboardButton('Статистика доходов')
 b7 = KeyboardButton('Статистика расходов')
 b8 = KeyboardButton('Вход в сервис')
@@ -143,14 +151,12 @@ async def get_user_id(login):
 
     user = session.query(Registration).filter(Registration.email == login).first()
 
-
-
     session.close()
     engine.dispose()  # NOTE: close required before dispose
     return user.id
 
 
-async def puss_income_to_db(index,sum,name,user_id):
+async def puss_income_to_db(index, sum, name, user_id):
     # создаем подключение к нашей БД
     engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
 
@@ -161,6 +167,26 @@ async def puss_income_to_db(index,sum,name,user_id):
     income = session.query(Income).filter(Income.user_id == user_id).first()
 
     new = Income(index_sal=index, sum_sal=sum, name_sal=name, user_id=user_id)
+
+    session.add(new)
+
+    session.commit()
+
+    session.close()
+    engine.dispose()  # NOTE: close required before dispose
+
+
+async def puss_outcome_to_db(name, index, quantity, cost, user_id):
+    # создаем подключение к нашей БД
+    engine = create_engine('postgresql://main:123@localhost:5432/purchases', echo=True)
+
+    # создаем сессию (открытие сессии)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    article = session.query(Article).filter(Article.user_id == user_id).first()
+
+    new = Article(name=name, index=index, quantity=quantity, cost=cost, user_id=user_id)
 
     session.add(new)
 
@@ -434,6 +460,82 @@ async def user_incomes(message: types.Message, state: FSMContext):
                                    reply_markup=kb3)
             await get_more_in_articles(message, data['login'])
 
+        if message.text == 'Добавление расходов':
+            await bot.send_message(chat_id=message.from_id,
+                                   text="Добавляй покупку \n"
+                                        "Введи Название",
+                                   parse_mode='HTML')
+            await AddOutcomes.get_Outcomes_name.set()
+
+            @dp.message_handler(content_types=['text'], state=AddOutcomes.get_Outcomes_name)
+            async def get_name_outcome(message: types.Message, state: FSMContext):
+                async with state.proxy() as data:
+                    if message.text is not None:
+                        data['name'] = message.text
+                        await message.reply("Теперь Категорию/Индекс:")
+                        await AddOutcomes.next()
+                    else:
+                        await message.reply("Вы ничего не написали(")
+
+            @dp.message_handler(content_types=['text'], state=AddOutcomes.get_Outcomes_index)
+            async def get_index_outcome(message: types.Message, state: FSMContext):
+                async with state.proxy() as data:
+                    if message.text.isdigit():
+                        data['index'] = message.text
+                        await message.reply("Количество:")
+                        await AddOutcomes.next()
+                    else:
+                        await message.reply("Вводите тольлько цифры")
+
+            @dp.message_handler(content_types=['text'], state=AddOutcomes.get_Outcomes_quantity)
+            async def get_quantity_outcome(message: types.Message, state: FSMContext):
+                async with state.proxy() as data:
+                    if message.text.isdigit():
+                        data['quantity'] = message.text
+                        await message.reply("По цене:")
+                        await AddOutcomes.get_id_name.set()
+                    else:
+                        await message.reply("Вводите тольлько цифры")
+
+            @dp.message_handler(content_types=['text'], state=AddOutcomes.get_id_name)
+            async def get_cost_outcome(message: types.Message, state: FSMContext):
+                print('nen')
+                async with state.proxy() as data:
+                    print('data', data)
+                    if message.text.isdigit():
+                        data['cost'] = message.text
+                        print('1')
+                        data['id'] = await get_user_id(data['login'])
+                        print('2')
+                        await puss_outcome_to_db(data['name'], data['index'], data['quantity'], data['cost'], data['id'])
+                        print('3')
+                        await bot.send_message(chat_id=message.from_id,
+                                               text="Расход добавлен",
+                                               parse_mode='HTML',
+                                               reply_markup=kb1)
+                        print('4')
+                        await RegisteredUser.user_registered.set()
+                    else:
+                        await message.reply("Вводите тольлько цифры")
+
+
+                        """
+                        
+                                        async with state.proxy() as data:
+                    if message.text is not None:
+                        data['name'] = message.text
+                        data['id'] = await get_user_id(data['login'])
+                        await puss_income_to_db(data['index'], data['sum'], data['name'], data['id'])
+                        await bot.send_message(chat_id=message.from_id,
+                                               text="Доход добавлен",
+                                               parse_mode='HTML',
+                                               reply_markup=kb1)
+                        await RegisteredUser.user_registered.set()
+                    else:
+                        await message.reply("Вводите тольлько буквы")
+                        
+                        """
+
         if message.text == 'Добавление доходов':
             await bot.send_message(chat_id=message.from_id,
                                    text="Добавляй зп \n"
@@ -452,9 +554,6 @@ async def user_incomes(message: types.Message, state: FSMContext):
                     else:
                         await message.reply("Вводите тольлько цифры")
 
-
-
-
             @dp.message_handler(content_types=['text'], state=AddIncomes.get_income_sum)
             async def get_sum_income(message: types.Message, state: FSMContext):
                 print('2')
@@ -466,13 +565,10 @@ async def user_incomes(message: types.Message, state: FSMContext):
                     else:
                         await message.reply("Вводите тольлько цифры")
 
-
-
             @dp.message_handler(content_types=['text'], state=AddIncomes.get_income_name)
             async def get_name_income(message: types.Message, state: FSMContext):
-                print('3')
                 async with state.proxy() as data:
-                    if message.text.isalpha():
+                    if message.text is not None:
                         data['name'] = message.text
                         data['id'] = await get_user_id(data['login'])
                         await puss_income_to_db(data['index'], data['sum'], data['name'], data['id'])
@@ -480,8 +576,7 @@ async def user_incomes(message: types.Message, state: FSMContext):
                                                text="Доход добавлен",
                                                parse_mode='HTML',
                                                reply_markup=kb1)
-
-                        await state.finish()
+                        await RegisteredUser.user_registered.set()
                     else:
                         await message.reply("Вводите тольлько буквы")
 
