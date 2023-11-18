@@ -324,10 +324,9 @@ async def get_articles(message: types.Message, login):
 
     await bot.send_message(chat_id=message.from_id,
                            text=f'Доход за cегодня= {sum_articles_for_today} \n'
-                                f'Доход за неделю = {sum_incomes_for_week} \n'
+                                f'Доход за неделю = {sum_articles_for_week} \n'
                                 f'Доход за месяц = {sum_articles_for_month} \n'
                                 f'Доход за все время = {sum_articles_for_year} \n',
-
                            parse_mode='HTML'
                            )
 
@@ -376,6 +375,7 @@ async def get_more_in_articles(message: types.Message, login):
         await bot.send_message(chat_id=message.from_id,
                                text=f'Название: {e.name} \n'
                                     f'Категория/Индекс: {e.index} \n'
+                                    f'Кол-во: {e.quantity}  \n'
                                     f'Цена: {e.cost}  \n'
                                     f' Дата: {e.date.date()} \n',
 
