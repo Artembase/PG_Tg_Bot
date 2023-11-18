@@ -406,7 +406,8 @@ async def some_data(message: types.Message):
 
 
 @dp.message_handler(commands=['start'], state='*')
-async def help_command(message: types.Message):
+async def start_command(message: types.Message, state: FSMContext):
+    await state.finish()
     await bot.send_message(chat_id=message.from_id,
                            text="Добро пожаловать, для начала взаимодествия войдите в аккаунт или зарегистрируйтесьб на сайте site.ru",
                            parse_mode='HTML',
