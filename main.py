@@ -81,6 +81,7 @@ kb = ReplyKeyboardMarkup(resize_keyboard=True,
                          )  # аргументы
 
 kb1 = ReplyKeyboardMarkup(resize_keyboard=True,
+                          one_time_keyboard=True
                           )  # аргументы
 
 kb2 = ReplyKeyboardMarkup(resize_keyboard=True,
@@ -444,32 +445,45 @@ async def user_incomes(message: types.Message, state: FSMContext):
             async def get_index_income(message: types.Message, state: FSMContext):
                 print('1')
                 async with state.proxy() as data:
-                    data['index'] = message.text
+                    if message.text.isdigit():
+                        data['index'] = message.text
+                        await message.reply("Теперь сумму:")
+                        await AddIncomes.next()
+                    else:
+                        await message.reply("Вводите тольлько цифры")
 
-                await message.reply("Теперь сумму:")
-                await AddIncomes.next()
+
+
 
             @dp.message_handler(content_types=['text'], state=AddIncomes.get_income_sum)
             async def get_sum_income(message: types.Message, state: FSMContext):
                 print('2')
                 async with state.proxy() as data:
-                    data['sum'] = message.text
+                    if message.text.isdigit():
+                        data['sum'] = message.text
+                        await message.reply("Теперь название:")
+                        await AddIncomes.next()
+                    else:
+                        await message.reply("Вводите тольлько цифры")
 
-                await message.reply("Теперь название:")
-                await AddIncomes.next()
+
 
             @dp.message_handler(content_types=['text'], state=AddIncomes.get_income_name)
             async def get_name_income(message: types.Message, state: FSMContext):
                 print('3')
                 async with state.proxy() as data:
-                    data['name'] = message.text
-                    data['id'] = await get_user_id(data['login'])
+                    if message.text.isalpha():
+                        data['name'] = message.text
+                        data['id'] = await get_user_id(data['login'])
+                        await puss_income_to_db(data['index'], data['sum'], data['name'], data['id'])
+                        await bot.send_message(chat_id=message.from_id,
+                                               text="Доход добавлен",
+                                               parse_mode='HTML',
+                                               reply_markup=kb1)
 
-                print(data)
-                await puss_income_to_db(data['index'], data['sum'], data['name'], data['id'])
-
-                await state.finish()
-
+                        await state.finish()
+                    else:
+                        await message.reply("Вводите тольлько буквы")
 
 
 #
