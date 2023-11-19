@@ -1,4 +1,4 @@
-from aiogram import Bot, Dispatcher, types
+﻿from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from sqlalchemy import create_engine, Column, Integer, String
@@ -9,6 +9,8 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import json
+import requests
 import re
 from sqlalchemy import select
 import string
@@ -83,6 +85,9 @@ class AddOutcomes(StatesGroup):
 class RegisteredUser(StatesGroup):
     user_registered = State()
 
+class GetJsonState(StatesGroup):
+    get_json = State()
+
 
 kb = ReplyKeyboardMarkup(resize_keyboard=True,
                          one_time_keyboard=True
@@ -139,6 +144,13 @@ async def get_user_data(message: types.Message):
 
     session.close()
     engine.dispose()  # NOTE: close required before dispose!
+
+
+async def get_path(code):
+    response = requests.get(API_URL + f"get-file/?code={code}")
+    if response:
+        return response.json()
+    return None
 
 
 async def get_user_id(login):
@@ -428,6 +440,7 @@ async def log_in_command(message: types.Message):
 async def user_incomes(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text == 'Главное меню':
+
             await bot.send_message(chat_id=message.from_id,
                                    text="типо меню",
                                    parse_mode='HTML',
@@ -460,6 +473,55 @@ async def user_incomes(message: types.Message, state: FSMContext):
                                    parse_mode='HTML',
                                    reply_markup=kb3)
             await get_more_in_articles(message, data['login'])
+
+        if message.text == 'Добавление чека':
+            await bot.send_message(chat_id=message.from_id,
+                                   text="Ну добавляй",
+                                   parse_mode='HTML',
+                                   reply_markup=kb3)
+            await GetJsonState.get_json.set()
+
+            @dp.message_handler(content_types=['document'], state=GetJsonState.get_json)
+            async def get_json(message: types.Message, state: FSMContext):
+                async with state.proxy() as data:
+                    await bot.send_message(chat_id=message.from_id,
+                                           text="Это что он?:",
+                                           parse_mode='HTML')
+                    # print("дальше туут")
+                    print(data, ' Это лежит в дате')
+                    file_id = message.document.file_id
+                    file = await bot.get_file(file_id)
+                    file_path = file.file_path
+                    # print("дальше туут2")
+                    await bot.download_file(file_path, "text.txt")
+                    # print("дальше туут3")
+
+                    with open("text.txt", encoding='utf-8') as json_file:
+                        # print("дальше туут4")
+                        JsonData = json.load(json_file)
+                        print('Тут дата:', JsonData)
+
+                    await bot.send_message(chat_id=message.from_id,
+                                           text="обавляю данные в бд",
+                                           reply_markup=kb3,
+                                           parse_mode='HTML')
+                    for each in JsonData[0]['ticket']['document']['receipt']['items']:
+                        # print('Тут другя дата:', each['name'])
+                        # text1 = 'Название: ', each['name'], 'Кол-во: ', each['quantity'], 'Цена: ',each['price']
+                        # str12=''.join(text1)
+                        # await bot.send_message(chat_id=message.from_id,
+                        #                        text=str12,
+                        #                        parse_mode='HTML')
+                        real_price = each['price'] / 100 + 1
+                        data['id'] = await get_user_id(data['login'])
+                        print(data['id'], "При добавлении чека юрер такой")
+                        await puss_outcome_to_db(each['name'], 0, each['quantity'], real_price, data['id'])
+                        await RegisteredUser.user_registered.set()
+
+
+
+
+
 
         if message.text == 'Добавление расходов':
             await bot.send_message(chat_id=message.from_id,
