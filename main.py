@@ -1,19 +1,16 @@
 ﻿from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash
 from datetime import datetime
 import json
 import requests
-import re
-from sqlalchemy import select
-import string
 
 storage = MemoryStorage()
 Base = declarative_base()
@@ -82,8 +79,10 @@ class AddOutcomes(StatesGroup):
     get_Outcomes_cost = State()
     get_id_name = State()
 
+
 class RegisteredUser(StatesGroup):
     user_registered = State()
+
 
 class GetJsonState(StatesGroup):
     get_json = State()
@@ -176,7 +175,7 @@ async def puss_income_to_db(index, sum, name, user_id):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    income = session.query(Income).filter(Income.user_id == user_id).first()
+    # income = session.query(Income).filter(Income.user_id == user_id).first()
 
     new = Income(index_sal=index, sum_sal=sum, name_sal=name, user_id=user_id)
 
@@ -196,7 +195,7 @@ async def puss_outcome_to_db(name, index, quantity, cost, user_id):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    article = session.query(Article).filter(Article.user_id == user_id).first()
+    # article = session.query(Article).filter(Article.user_id == user_id).first()
 
     new = Article(name=name, index=index, quantity=quantity, cost=cost, user_id=user_id)
 
@@ -302,17 +301,17 @@ async def get_articles(message: types.Message, login):
 
     articles = session.query(Article).filter(Article.user_id == user_id.id).order_by(Article.date.desc()).all()
 
-    sum_articles = 0
+    # sum_articles = 0
     sum_articles_for_today = 0
     sum_articles_for_week = 0
     sum_articles_for_month = 0
     sum_articles_for_year = 0
-    sum_incomes_for_week = 0
+    # sum_incomes_for_week = 0
 
-    for_date = ''
+    # for_date = ''
 
     to_day = datetime.today().date()
-    a = ''
+    # a = ''
     # Расходы
     for e in articles:
 
@@ -421,7 +420,8 @@ async def some_data(message: types.Message):
 async def start_command(message: types.Message, state: FSMContext):
     await state.finish()
     await bot.send_message(chat_id=message.from_id,
-                           text="Добро пожаловать, для начала взаимодествия войдите в аккаунт или зарегистрируйтесьб на сайте site.ru",
+                           text="Добро пожаловать, для начала взаимодествия войдите в аккаунт или зарегистрируйтесьб "
+                                "на сайте site.ru",
                            parse_mode='HTML',
                            reply_markup=kb)
 
@@ -440,7 +440,6 @@ async def log_in_command(message: types.Message):
 async def user_incomes(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text == 'Главное меню':
-
             await bot.send_message(chat_id=message.from_id,
                                    text="типо меню",
                                    parse_mode='HTML',
@@ -518,11 +517,6 @@ async def user_incomes(message: types.Message, state: FSMContext):
                         await puss_outcome_to_db(each['name'], 0, each['quantity'], real_price, data['id'])
                         await RegisteredUser.user_registered.set()
 
-
-
-
-
-
         if message.text == 'Добавление расходов':
             await bot.send_message(chat_id=message.from_id,
                                    text="Добавляй покупку \n"
@@ -570,7 +564,8 @@ async def user_incomes(message: types.Message, state: FSMContext):
                         print('1')
                         data['id'] = await get_user_id(data['login'])
                         print('2')
-                        await puss_outcome_to_db(data['name'], data['index'], data['quantity'], data['cost'], data['id'])
+                        await puss_outcome_to_db(data['name'], data['index'], data['quantity'], data['cost'],
+                                                 data['id'])
                         print('3')
                         await bot.send_message(chat_id=message.from_id,
                                                text="Расход добавлен",
@@ -580,7 +575,6 @@ async def user_incomes(message: types.Message, state: FSMContext):
                         await RegisteredUser.user_registered.set()
                     else:
                         await message.reply("Вводите тольлько цифры")
-
 
                         """
                         
