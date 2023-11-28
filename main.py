@@ -56,7 +56,7 @@ class Article(Base):
         return '<Article %r>' % self.id
 
 
-bot = Bot('6646799075:AAEnWRsy-xNajNzdMYpwAx7PJoupa52V2f8')
+bot = Bot('token')
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 
